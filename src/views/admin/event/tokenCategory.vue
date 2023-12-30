@@ -52,7 +52,7 @@
                                             <tr v-for="(item,index) in paginatedCats" :key="index">
                                                 <td>{{index+1}}</td>
                                                 <td>{{item.name}}</td>
-                                                <td><img crossorigin="anonymous" :src="this.$web+item.image"  alt="No image" width="100" height="100"></td>
+                                                <td><img crossorigin="anonymous" :src="this.$web+'/'+item.image"  alt="No image" width="100" height="100"></td>
                                                  <td>
                                                     <button type="button"  @click="detailModal(item._id)" class="btn btn-info"  ><i class="bx bx-bullseye"></i></button>
                                                 </td>
@@ -122,8 +122,8 @@
                             <label for="example-text-input" class="col-md-2 col-form-label">Upload image</label>
                             <div class="col-md-10">
                                 <input class="form-control" id="file" ref="fileInput" type="file" @input="pickFile" @change="handleFileUpload">
+                                <br>
                                 <img v-if="selectedImage" :src="selectedImage" alt="Selected Image" width="100" height="100">
-
                             </div>
                         </div>
 
@@ -156,6 +156,7 @@
                 <div class="modal-body">
 
                     <form @submit.prevent="onSubmit">
+                        <input class="form-control" type="hidden" v-model="this.form.id" />
                         <div class="form-group row">
                             <label for="example-text-input" class="col-md-2 col-form-label">Name</label>
                             <div class="col-md-10">
@@ -180,7 +181,9 @@
                             <label for="example-text-input" class="col-md-2 col-form-label">Upload image</label>
                             <div class="col-md-10">
                                 <input class="form-control" id="file" ref="fileInput" type="file" @input="pickFile" @change="handleFileUpload">
-                                <img v-if="selectedImage" :src="this.$web+selectedImage" crossorigin="anonymous"  alt="Selected Image" width="100" height="100">
+                                <br>
+                                <img v-if="selectedImage" :src="this.$web+'/'+selectedImage" crossorigin="anonymous"  alt="Selected Image1" width="100" height="100">
+                                <img v-if="uploadImage" :src="uploadImage" crossorigin="anonymous"  alt="Selected Image1" width="100" height="100">
                             </div>
                         </div>
 
@@ -204,6 +207,7 @@
     import Footer from '../layout/common/Footer.vue';
     import useVuelidate from '@vuelidate/core'
     import { required } from '@vuelidate/validators'
+    import axios from "axios";
 
     export default {
 
@@ -211,142 +215,181 @@
 
         setup () {
                 return { v$: useVuelidate() }
-        },
+            },
         
         components: {
 
                     Header,
                     Sidebar,
                     Footer,
-                },
-
-            mounted() {
-                this.getResult();
             },
 
-            computed: {
-                paginatedCats() {
-                        const startIndex = (this.currentPage - 1) * this.pageSize;
-                        const endIndex = startIndex + this.pageSize;
-                        // Assuming this.result is your complete data
-                        return this.result.slice(startIndex, endIndex);
-                    },
-                    pageCount() {
-                        return Math.ceil(this.result.length / this.pageSize);
-                    },
+        mounted() {
+            this.getResult();
+            },
+
+        computed: {
+            paginatedCats() {
+                    const startIndex = (this.currentPage - 1) * this.pageSize;
+                    const endIndex = startIndex + this.pageSize;
+                    // Assuming this.result is your complete data
+                    return this.result.slice(startIndex, endIndex);
                 },
+                pageCount() {
+                    return Math.ceil(this.result.length / this.pageSize);
+                },
+            },
 
-            watch: {
-                        currentPage(newPage) {
-                        // Fetch data when the page changes
-                        this.getResult(newPage);
-                        },
+        watch: {
+                    currentPage(newPage) {
+                    this.getResult(newPage);
                     },
+            },
 
-
-                    data() {
-                            const storedToken = localStorage.getItem('token');
-                            const token = storedToken ? JSON.parse(storedToken) : null;
-
-                            return {
-                                nameSearch: '',
-                                currentPage: 1,
-                                pageSize: 10,
-                                result: [],
-                                selectedImage: null,
-                                token: token,
-                                form: {
-                                    name: '',
-                                    description: '',
-                                },
-                            };
-                        },
+        data() {
+                return {
+                    nameSearch: '',
+                    currentPage: 1,
+                    pageSize: 10,
+                    result: [],
+                    ImageCat:'',
+                    selectedImage: null,
+                    uploadImage:null,
+                    form: {
+                        name: '',
+                        description: '',
+                        id:''
+                    },
+                };
+            },
 
         validations() {
 
-                return {
+            return {
 
-                    form: {
-                        name: {required},
-                        description: {required},
-                    }
+                form: {
+                    name: {required},
+                    description: {required},
                 }
+            }
             },
 
         methods: {
+
                 async getResult(page=1) {
-                     
+                    
                         const params = {
-                            page: page,
-                            limit: '1000',
-                            }
-                        const data =  await this.api('GET',this.$main+'events/token-category/all',params,false,false,this.token)
-                        if(data.success===true){
-                            this.result =  data.data
+                            page: 1,
+                            limit:''
                         }
+                            const queryString = new URLSearchParams(params).toString();
+                            const urlWithParams = `${this.$main}/api/v1/admin/events/token-category/all?${queryString}`;
+                            const data = await this.api('GET', urlWithParams, null, true);
+                            if (data.success === true) {
+                                this.result = data.data;
+                            }
                 },
 
                 async save() {
-                 
-                    const input = document.getElementById('file');
-                    const file = input.files[0];
-                    const formData = new FormData();
-                        formData.append('name', this.form.name);
-                        formData.append('description', this.form.description);
-                        // formData.append('image', file);
-                    const data =  await this.api('POST',this.$main+'events/token-category',formData,false,true,this.token)
-                    if (data.success === true) {
-                            location.reload();
-                        } else if (data.success === false) {
-                            this.onFailure(data.message);
-                        }
+
+                    let formData = new FormData();
+                    formData.append('name', this.form.name);
+                    formData.append('description', this.form.description);
+                    formData.append('image', this.ImageCat);
+                            
+                    const apiUrl = this.$main+`/api/v1/admin/events/token-category`;
+                    const token = localStorage.getItem('token');
+
+                    axios.defaults.withCredentials = true;
+                    let headers = {
+                        'Content-Type': 'multipart/form-data',
+                    };
+                    headers['Authorization'] = `Bearer ${JSON.parse(token)}`;
+                    await axios.post(apiUrl, formData, {headers}).then(response => {
+                        if (response.data.success === true) {
+                                location.reload();
+                            } else if (response.data.success === false) {
+                                this.onFailure(response.data.message);
+                            }
+                    });
+
                 },
 
-                async updateSave() {
-                 
-                    alert("Api not Available")
-                //  const input = document.getElementById('file');
-                //  const file = input.files[0];
-                //  const formData = new FormData();
-                //      formData.append('name', this.form.name);
-                //      formData.append('description', this.form.description);
-                //      // formData.append('image', file);
-                //  const data =  await this.api('POST',this.$main+'events/token-category/tokens',formData,false,true,this.token)
-                //  if (data.success === true) {
-                //          location.reload();
-                //      } else if (data.success === false) {
-                //          this.onFailure(data.message);
-                //      }
-             },
+                async updateSave() {   
+
+                    // let formData = new FormData();
+                    // formData.append('id', this.form.id);
+                    // formData.append('name', this.form.name);
+                    // formData.append('description', this.form.description);
+                    // if (this.ImageCat !== '') {
+                    //     formData.append('image', this.ImageCat);
+                    // }
+
+                    let formDataObject = {
+                        id: this.form.id,
+                        name: this.form.name,
+                        description: this.form.description,
+                    };
+
+                    if (this.ImageCat !== '') {
+                        formDataObject.image = this.ImageCat;
+                    }
+                    let formDataJSON = JSON.stringify(formDataObject);
+                    
+                    // const param = {
+                    //     id:this.form.id,
+                    //     name:this.form.name,
+                    //     description:this.form.description,
+                    // }
+
+                    const apiUrl = `${this.$main}/api/v1/admin/events/token-category/${this.form.id}`; // Adjust the URL here
+
+                    try {
+                        const response = await this.api('PATCH', apiUrl, formDataJSON, true);
+
+                        if (response.data.success === true) {
+                        // location.reload();
+                        } else if (response.data.success === false) {
+                        this.onFailure(response.data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.onFailure('An error occurred while updating the data.');
+                    }
+                },
 
                 async detailModal(id){
-                    const data = await this.api('GET', `${this.$main}events/token-category/id/${id}`, null, false, false, this.token);
+                    const data = await this.api('GET', this.$main+`/api/v1/admin/events/token-category/id/${id}`, null, true);
                         if (data.success === true) {
                                 $('.detailModal').modal('show')
                                 this.res =  data.data
                                 this.form.name= this.res.name;
                                 this.form.description= this.res.description;
+                                this.form.id= this.res._id;
                                 this.selectedImage= this.res.image;
                             }
                     },
 
                 handleFileUpload(event) {
-                      const file = event.target.files[0];
-                      if (file) {
+                    const file = event.target.files[0];
+                    this.ImageCat = event.target.files[0];
+
+                    if (file) {
                         // Assuming you have a method to handle image previews
                         this.previewImage(file);
-                      }
+                    }
                     },
                     
                 previewImage(file) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        this.selectedImage = e.target.result;
-                      };
-                      reader.readAsDataURL(file);
+                        this.uploadImage = e.target.result;
+                        this.selectedImage = null
+                    };
+                    reader.readAsDataURL(file);
                     },
 
-        }
+            }
     }
 </script>
 

@@ -145,9 +145,20 @@
                                                 </div>
                                             </div>
 
-                                            <div class="row mt-3">
+                                            <div class="form-group row">
+                                                <label for="example-text-input" class="col-lg-2 col-form-label">Upload image</label>
                                                 <div class="col-md-12">
-                                                    <img crossorigin="anonymous" :src="this.$web+result.image"  alt="No image" width="100" height="100">
+                                                    <input class="form-control" id="file" ref="fileInput" type="file" @input="pickFile" @change="handleFileUpload">
+                                                    <br>
+                                                    <img v-if="selectedImage" :src="selectedImage" alt="Selected Image" width="100" height="100">
+
+                                                </div>
+                                            </div>
+
+
+                                            <div class="row mt-3" v-if="!selectedImage">
+                                                <div class="col-md-12">
+                                                    <img crossorigin="anonymous" :src="this.$web+'/'+result.image"  alt="No image" width="100" height="100">
                                                 </div>
                                             </div>
 
@@ -176,6 +187,7 @@
     import Footer from '../layout/common/Footer.vue';
     import useVuelidate from '@vuelidate/core'
     import { required } from '@vuelidate/validators'
+    import axios from "axios";
 
     export default {
         props: ['page'],
@@ -201,6 +213,7 @@
                             category: '',
                             startTime: '',
                             endTime: '',
+                            eventImg:'',
                             address: {
                                     street1: '',
                                     street2: '',
@@ -211,64 +224,59 @@
                                 },
                             description:'',
                     },
-                    result:{}
+                    result:{},
+                    loading: false,
+                    selectedImage: null,
                 };
             },
 
-            validations() {
+        validations() {
 
-                        return {
+                    return {
 
-                            form: {
-                                name: {required},
-                                category: {required},
-                                startTime: {required},
-                                endTime: {required},
-                                address: {
-                                            street1: { required },
-                                            street2: { required },
-                                            city: { required },
-                                            state: { required },
-                                            zipCode: { required },
-                                            country: { required },
-                                        },
-                                description: {required},
-                            }
+                        form: {
+                            name: {required},
+                            category: {required},
+                            startTime: {required},
+                            endTime: {required},
+                            address: {
+                                        street1: { required },
+                                        street2: { required },
+                                        city: { required },
+                                        state: { required },
+                                        zipCode: { required },
+                                        country: { required },
+                                    },
+                            description: {required},
                         }
-                    },
-
-        methods: {
-            async getResult(page=1) {
-                try {
-                        const storedToken = localStorage.getItem('token');
-                        const token = storedToken ? JSON.parse(storedToken) : null;
-                        // Assuming this.form contains the data you want to send in the request body
-                        const data = await this.api('GET', `${this.$main}events/${this.$route.params.id}`, null, false, false, token);
-
-                        if (data.success === true) {
-                            this.result = data.data;
-                            this.form.name = data.data.name;
-                            this.form.category = data.data.category;
-                            this.form.startTime = data.data.startTime;
-                            this.form.endTime = data.data.endTime;
-                            this.form.address.street1 = data.data.address.street1;
-                            this.form.address.street2 = data.data.address.street2;
-                            this.form.address.city = data.data.address.city;
-                            this.form.address.state = data.data.address.state;
-                            this.form.address.zipCode = data.data.address.zipcode;
-                            this.form.address.country = data.data.address.country;
-                            this.form.description = data.data.description;
-                        
-                        }
-                    } catch (error) {
-                        console.error('Error fetching data:', error);
                     }
                 },
 
-                async updateSave(page=1) {
+        methods: {
+                async getResult(page=1) {
+                        try {
+                            const data = await this.api('GET', this.$main+`/api/v1/admin/events/${this.$route.params.id}`, null, true);
+                            if (data.success === true) {
+                                this.result = data.data;
+                                this.form.name = data.data.name;
+                                this.form.category = data.data.category;
+                                this.form.startTime = data.data.startTime;
+                                this.form.endTime = data.data.endTime;
+                                this.form.address.street1 = data.data.address.street1;
+                                this.form.address.street2 = data.data.address.street2;
+                                this.form.address.city = data.data.address.city;
+                                this.form.address.state = data.data.address.state;
+                                this.form.address.zipCode = data.data.address.zipcode;
+                                this.form.address.country = data.data.address.country;
+                                this.form.description = data.data.description;
+                            }
+                        } catch (error) {
+                            console.error('Error fetching data:', error);
+                        }
+                },
 
-                    const storedToken = localStorage.getItem('token');
-                    const token = storedToken ? JSON.parse(storedToken) : null;
+                async updateSave(page=1) {  
+
                     const formData = new FormData();
                         formData.append('name', this.form.name);
                         formData.append('category', this.form.category);
@@ -281,17 +289,43 @@
                         formData.append('address.zipcode', this.form.address.zipCode);
                         formData.append('address.country', this.form.address.country);
                         formData.append('description', this.form.description);
+                        if(this.form.eventImg!=''){
+                            formData.append('image', this.form.eventImg);
+                        }
 
-                    const data =  await this.api('Put',`${this.$main}events/${this.$route.params.id}`,formData,false,true,token)
+                        const apiUrl = this.$main+`/api/v1/admin/events/${this.$route.params.id}`;
+                        const token = localStorage.getItem('token');
 
-                    if (data.success === true) {
-                        this.onSuccess(data.message);
-                    }
-                    else if(data.success === false){
-                        this.onFailure(data.message);
-                    }
+                        axios.defaults.withCredentials = true;
+                        let headers = {
+                            'Content-Type': 'multipart/form-data',
+                        };
+                        headers['Authorization'] = `Bearer ${JSON.parse(token)}`;
+                        await axios.put(apiUrl, formData, {headers}).then(response => {
+                            if (response.data.success === true) {
+                                    this.onSuccess(response.data.message);
+                                } else if (response.data.success === false) {
+                                    this.onFailure(response.data.message);
+                                }
+                        });
+
                 },
 
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    this.form.eventImg = event.target.files[0];
+                      if (file) {
+                        this.previewImage(file);
+                      }
+                    },
+                    
+                previewImage(file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.selectedImage = e.target.result;
+                      };
+                      reader.readAsDataURL(file);
+                    },
             }
     }
 </script>

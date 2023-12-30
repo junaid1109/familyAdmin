@@ -18,19 +18,41 @@ export const request =
                 document.body.appendChild(tag);
               // }
             });
-          },
+        },
 
-          async api(requestType = "POST", url, data = {}, loader = false, showToast = false, token = null) {
+        onSuccess(data) {
+            Swal.fire({
+                position: 'top-end',
+                icon: 'success',
+                title: data.message || 'Action  Successfully',
+                showConfirmButton: false,
+                timer: 1500
+            });
+
+        },
+
+        async api(requestType = "POST", url, data = {}, authenticate = false,formData=false) {
             let request = null;
             let response = {};
-        
-            const headers = {
-              'Content-Type': ['application/json'],
-            };
-        
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+            let headers;
+
+            if (formData) {
+                headers = {
+                    'Content-Type': 'multipart/form-data',
+                };
+            } else {
+                headers = {
+                    'Content-Type': 'application/json',
+                };
             }
+
+            if (authenticate) {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers['Authorization'] = `Bearer ${JSON.parse(token)}`;
+                }
+              }
+
         
             switch (requestType.toUpperCase()) {
                 case "GET":
@@ -44,6 +66,9 @@ export const request =
                     break;
                 case "DELETE":
                     request = axios.delete(url, { headers, data });
+                    break;
+                case "PATCH":
+                    request = axios.patch(url, data, { headers });
                     break;
                 default:
                     // Default to POST for unrecognized request types
@@ -62,18 +87,6 @@ export const request =
         
             return response;
         },
-        
-
-        onSuccess(data) {
-            Swal.fire({
-                position: 'top-end',
-                icon: 'success',
-                title: data.message || 'Action  Successfully',
-                showConfirmButton: false,
-                timer: 1500
-            });
-
-        },
 
         onFailure(data) {
             this.hide_error = false;
@@ -84,7 +97,7 @@ export const request =
                 showConfirmButton: false,
                 timer: 1500
               });
-          },
+        },
 
     },
 

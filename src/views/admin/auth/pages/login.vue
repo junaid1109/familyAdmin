@@ -60,7 +60,8 @@
                                                 </div>
                         
                                                 <div class="mt-3">
-                                                    <button :disabled="v$.form.$invalid"  v-on:click="login" class="btn btn-primary btn-block waves-effect waves-light" type="submit">Log In</button>
+                                                    <button v-if="!loading" :disabled="v$.form.$invalid"  v-on:click="login" class="btn btn-primary btn-block waves-effect waves-light" type="submit">Log In</button>
+                                                    <span class="btn btn-success btn-block waves-effect waves-light" v-else>Loading...</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -95,7 +96,7 @@
         data() {
 
             return {
-
+                loading: false,
                 form: {
                     email: '',
                     password: '',
@@ -123,27 +124,31 @@
         },
         methods: {
                    async login() {
-                          const data =  await this.api('POST',this.$auth+'login',this.form,true,true)
-                          if(data.success===true){
-                                localStorage.setItem('userData',JSON.stringify(data.userData))
-                                localStorage.setItem('token',JSON.stringify(data.access_token))
-                                this.$router.push({name:"Dashboard"});
-                          }
-                          else{
-                                Swal.fire({
-                                        position: 'top-end',
-                                        icon: 'error',
-                                        title: "Invalid credentials",
-                                        showConfirmButton: false,
-                                        timer: 1500
-                                    });
-                          }
+                            this.loading = true;
+                            try {
+                                const data = await this.api('POST', '/api/v1/auth/login', this.form, false, false);
+                                if (data.success === true) {
+                                    this.loading = false;
+                                    localStorage.setItem('userData', JSON.stringify(data.userData));
+                                    localStorage.setItem('token', JSON.stringify(data.access_token));
+                                    this.$router.push({ name: 'Dashboard' });
+                                }
+                                else{
+                                    this.loading = false;
+                                    Swal.fire({
+                                            position: 'top-end',
+                                            icon: 'error',
+                                            title: "Invalid credentials",
+                                            showConfirmButton: false,
+                                            timer: 1500
+                                        });
+                                }
+                            } catch (error) {
+                                // Handle error as needed
+                                console.error('Login failed:', error);
+                                }
                     }
-                    
-
-
                 }
     }
 
 </script>
-

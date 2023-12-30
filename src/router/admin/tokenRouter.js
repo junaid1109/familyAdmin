@@ -1,6 +1,7 @@
 
 import TokenCategory from '../../views/admin/event/tokenCategory.vue';
 import Token from '../../views/admin/event/token.vue';
+import TokenAssigned from '../../views/admin/event/tokenAssigned.vue';
 
 const routes = [
 
@@ -16,6 +17,13 @@ const routes = [
         component: Token,
         path:"/tokens",
         meta:{title:'Tokens'}
+    },
+
+    {
+        name:'TokenAssigned',
+        component: TokenAssigned,
+        path:"/token-assigned",
+        meta:{title:'Token Assigned'}
     },
     
 ]

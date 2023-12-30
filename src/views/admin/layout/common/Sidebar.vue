@@ -25,6 +25,7 @@
                         <li><router-link to="/events" >Events</router-link> </li>
                         <li><router-link to="/token-category" >Token Category</router-link> </li>
                         <li><router-link to="/tokens" >Token</router-link> </li>
+                        <li><router-link to="/token-assigned" >Token Assigned</router-link> </li>
                     </ul>
                 </li>
                 <li class="main_li" data-parent-id="6">
@@ -62,7 +63,7 @@
     export default {
 
         mounted() {
-            this.loadJS(['./assets/libs/jquery/jquery.min.js','./assets/libs/bootstrap/js/bootstrap.bundle.min.js','./assets/libs/metismenu/metisMenu.min.js','./assets/libs/simplebar/simplebar.min.js','./assets/js/app.js'])
+            this.loadJS(['./assets/libs/jquery/jquery.min.js','./assets/libs/bootstrap/js/bootstrap.bundle.min.js','./assets/libs/metismenu/metisMenu.min.js','./assets/libs/simplebar/simplebar.min.js','./assets/libs/select2/js/select2.min.js','./assets/js/pages/form-advanced.init.js','./assets/js/app.js'])
         },
         
     }

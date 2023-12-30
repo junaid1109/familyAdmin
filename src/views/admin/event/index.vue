@@ -54,12 +54,13 @@
                                                 <td>{{index+1}}</td>
                                                 <td>{{item.category}}</td>
                                                 <td>{{item.name}}</td>
-                                                <td><img crossorigin="anonymous" :src="this.$web+item.image"  alt="No image" width="100" height="100"></td>
-                                                 <td style="display:flex; justify-content: space-around; align-items: center;">
+                                                <td><img crossorigin="anonymous" :src="this.$web+'/'+item.image"  alt="No image" width="100" height="100"></td>
+                                                 <td style="justify-content: space-around; align-items: center;">
                                                     <router-link :to="{name:'Event',params:{id:item._id}}" title="View Event" class="btn btn-info btn-sm">
                                                         <i class="bx bx-bullseye"></i>
                                                     </router-link>
-                                                    <button   class="btn btn-danger btn-sm" @click="deleteEvent(item._id)"><i class="bx bx-bx bx-trash"></i></button>
+                                                    &nbsp
+                                                    <button class="btn btn-danger btn-sm" @click="deleteEvent(item._id)"><i class="bx bx-bx bx-trash"></i></button>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -215,13 +216,15 @@
                             <label for="example-text-input" class="col-md-2 col-form-label">Upload image</label>
                             <div class="col-md-10">
                                 <input class="form-control" id="file" ref="fileInput" type="file" @input="pickFile" @change="handleFileUpload">
+                                <br>
                                 <img v-if="selectedImage" :src="selectedImage" alt="Selected Image" width="100" height="100">
 
                             </div>
                         </div>
 
                         <div style="float:right">
-                            <button type="submit"  :disabled="v$.form.$invalid" v-on:click="save"  class="btn btn-primary waves-effect waves-light" >Save</button>
+                            <button type="submit" v-if="!loading" :disabled="v$.form.$invalid" v-on:click="save"  class="btn btn-primary waves-effect waves-light" >Save</button>
+                            <span class="btn btn-success btn-block waves-effect waves-light" v-else>Loading...</span>
                         </div>
 
                     </form>
@@ -242,6 +245,7 @@
     import Footer from '../layout/common/Footer.vue';
     import useVuelidate from '@vuelidate/core'
     import { required } from '@vuelidate/validators'
+    import axios from "axios";
 
     export default {
 
@@ -258,29 +262,28 @@
                     Footer,
                 },
 
-            mounted() {
-                this.getResult();
+        mounted() {
+            this.getResult();
+        },
+
+        computed: {
+            paginatedCats() {
+                    const startIndex = (this.currentPage - 1) * this.pageSize;
+                    const endIndex = startIndex + this.pageSize;
+                    // Assuming this.result is your complete data
+                    return this.result.slice(startIndex, endIndex);
+                },
+                pageCount() {
+                    return Math.ceil(this.result.length / this.pageSize);
+                },
             },
 
-            computed: {
-                paginatedCats() {
-                        const startIndex = (this.currentPage - 1) * this.pageSize;
-                        const endIndex = startIndex + this.pageSize;
-                        // Assuming this.result is your complete data
-                        return this.result.slice(startIndex, endIndex);
-                    },
-                    pageCount() {
-                        return Math.ceil(this.result.length / this.pageSize);
+        watch: {
+                    currentPage(newPage) {
+                    // Fetch data when the page changes
+                    this.getResult(newPage);
                     },
                 },
-
-            watch: {
-                        currentPage(newPage) {
-                        // Fetch data when the page changes
-                        this.getResult(newPage);
-                        },
-                    },
-
 
         data() {
 
@@ -289,6 +292,7 @@
                     currentPage: 1,
                     pageSize: 10,
                     result:[],
+                    loading: false,
                     selectedImage: null,
                     file: null,
                     form: {
@@ -296,6 +300,7 @@
                             category: '',
                             startTime: '',
                             endTime: '',
+                            eventImg:'',
                             address: {
                                     street1: '',
                                     street2: '',
@@ -334,21 +339,16 @@
         methods: {
                 async getResult(page=1) {
                      
-                        const storedToken = localStorage.getItem('token');
-                        const token = storedToken ? JSON.parse(storedToken) : null;
-                        const data =  await this.api('GET',this.$main+'events',null,false,false,token)
+                        const data = await this.api('GET', this.$main+'/api/v1/admin/events', null, true, true);
                         if(data.success===true){
                             this.result =  data.data
                         }
                 },
 
                 async save() {
-                    const storedToken = localStorage.getItem('token');
-                    const token = storedToken ? JSON.parse(storedToken) : null;
-                    const input = document.getElementById('file');
-                    const file = input.files[0];
+                        this.loading = true;
                     const formData = new FormData();
-                        formData.append('image', this.file);
+                        formData.append('image', this.form.eventImg);
                         formData.append('name', this.form.name);
                         formData.append('category', this.form.category);
                         formData.append('startTime', this.form.startTime);
@@ -360,42 +360,46 @@
                         formData.append('address.zipCode', this.form.address.zipCode);
                         formData.append('address.country', this.form.address.country);
                         formData.append('description', this.form.description);
-                        for (const [key, value] of formData.entries()) {
-                            console.log(`${key}:`, value);
-                        }
-                    const data =  await this.api('POST',this.$main+'events',formData,false,true,token)
-                    if (data.success === true) {
-                            location.reload();
-                        } else if (data.success === false) {
-                            this.onFailure(data.message);
-                        }
+                       
+                        const apiUrl = this.$main+`/api/v1/admin/events`;
+                        const token = localStorage.getItem('token');
+
+                        axios.defaults.withCredentials = true;
+                        let headers = {
+                            'Content-Type': 'multipart/form-data',
+                        };
+                        headers['Authorization'] = `Bearer ${JSON.parse(token)}`;
+                        await axios.post(apiUrl, formData, {headers}).then(response => {
+                            if (response.data.success === true) {
+                                    location.reload();
+                                } else if (response.data.success === false) {
+                                    this.onFailure(response.data.message);
+                                }
+                        });
+
                 },
 
                 async deleteEvent(id) {
-                    alert(id);
-                        const storedToken = localStorage.getItem('token');
-                        const token = storedToken ? JSON.parse(storedToken) : null;
-
-                        try {
-                            const data = await this.api('DELETE', `${this.$main}events/${id}`, null, false, true, token);
-                            console.log('Delete Event Response:', data);
-
-                            if (data.success === true) {
-                                this.onSuccess(data.message);
-                            } else {
-                                this.onFailure(data.message);  // Handle the case where success is not true
-                            }
-                        } catch (error) {
-                            console.error('Error:', error);
-                            // Handle the error, e.g., display an error message
-                            this.onFailure('An error occurred while deleting the event.');
+                    try {
+                        const params = {
+                            id: id,
+                        };
+                        const data = await this.api('DELETE', this.$main + `/api/v1/admin/events/${id}`, params, true);
+                        if (data.success === true) {
+                            this.onSuccess(data.message);
+                            this.getResult();
+                        } else {
+                            this.onFailure(data.message);
                         }
-                    },
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.onFailure('An error occurred while deleting the event.');
+                    }
+                },
 
                 handleFileUpload(event) {
-                      const file = event.target.files[0];
-                      this.file = event.target.files[0];
-
+                    const file = event.target.files[0];
+                    this.form.eventImg = event.target.files[0];
                       if (file) {
                         // Assuming you have a method to handle image previews
                         this.previewImage(file);
