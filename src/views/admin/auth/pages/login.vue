@@ -126,7 +126,7 @@
                    async login() {
                             this.loading = true;
                             try {
-                                const data = await this.api('POST', '/api/v1/auth/login', this.form, false, false);
+                                const data = await this.api('POST', this.$main+'/api/v1/auth/login', this.form, false, false);
                                 if (data.success === true) {
                                     this.loading = false;
                                     localStorage.setItem('userData', JSON.stringify(data.userData));
