@@ -359,7 +359,7 @@
                 },
 
                 async detailModal(id){
-                    const data = await this.api('GET', this.$main+`/api/v1/admin/events/token-category/id/${id}`, null, true);
+                    const data = await this.api('GET', +`/api/v1/admin/events/token-category/id/${id}`, null, true);
                         if (data.success === true) {
                                 $('.detailModal').modal('show')
                                 this.res =  data.data
